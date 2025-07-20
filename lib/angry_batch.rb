@@ -18,3 +18,13 @@ module AngryBatch
   class BatchArgumentError < ArgumentError
   end
 end
+
+if defined?(Rails)
+  require 'rails/engine'
+
+  module AngryBatch
+    class Engine < Rails::Engine
+      # Engine configuration
+    end
+  end
+end

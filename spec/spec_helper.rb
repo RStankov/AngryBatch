@@ -21,34 +21,12 @@ ActiveRecord::Base.establish_connection(
   database: ':memory:',
 )
 
-ActiveRecord::Schema.define do
-  create_table 'angry_batch_batches', force: :cascade do |t|
-    t.string 'label'
-    t.string 'state', default: 'scheduling', null: false
-    t.integer 'jobs_count', default: 0, null: false
-    t.json 'complete_handlers', default: [], null: false
-    t.json 'failure_handlers', default: [], null: false
-    t.datetime 'finished_at'
-    t.datetime 'created_at', null: false
-    t.datetime 'updated_at', null: false
-    t.index ['state'], name: 'index_angry_batch_batches_on_state'
-  end
+ActiveRecord::Migration.verbose = false
+migration_files = Dir[File.expand_path('../lib/generators/angry_batch/templates/*.rb', __dir__)]
+migration_files.sort.each { |file| require file }
 
-  create_table 'angry_batch_jobs', force: :cascade do |t|
-    t.bigint 'batch_id', null: false
-    t.string 'state', default: 'pending', null: false
-    t.string 'active_job_idx', null: false
-    t.string 'active_job_class', null: false
-    t.json 'active_job_arguments'
-    t.string 'error_message'
-    t.datetime 'created_at', null: false
-    t.datetime 'updated_at', null: false
-    t.index ['active_job_idx'], name: 'index_angry_batch_jobs_on_active_job_idx', unique: true
-    t.index %w(batch_id state), name: 'index_angry_batch_jobs_on_batch_id_and_state'
-  end
-
-  add_foreign_key 'angry_batch_jobs', 'angry_batch_batches', column: 'batch_id'
-end
+# Run the migrations
+CreateAngryBatchTables.new.migrate(:up)
 
 RSpec.configure do |config|
   config.disable_monkey_patching!
