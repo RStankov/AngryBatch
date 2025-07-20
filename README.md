@@ -61,6 +61,14 @@ queue.enqueue SomeJob, argument3
 in the queue.perform_later
 ```
 
+### Cleaning completed jobs
+
+`AngryBatch` stores jobs in the database. You have to run `AngryBatch::CleanupCronJob` in a cron to clean the records.
+
+```
+AngryBatch::CleanupCronJob.perform
+```
+
 ### Example
 
 **Example 1**
