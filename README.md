@@ -1,9 +1,9 @@
 # AngryBatch
 
 ![Build Status](https://github.com/RStankov/AngryBatch/actions/workflows/main.yml/badge.svg)
+[![Gem Version](https://badge.fury.io/rb/angry_batch.svg)](http://badge.fury.io/rb/angry_batch)
 
-
-**AngryBatch** is a lightweight batching utility for [ActiveJob](https://guides.rubyonrails.org/active_job_basics.html) that lets you group multiple jobs into a batch and trigger follow-up jobs when all jobs in the batch are done.
+**AngryBatch** is a batching utility for [ActiveJob](https://guides.rubyonrails.org/active_job_basics.html) that lets you group multiple jobs into a batch and trigger follow-up jobs when all jobs in the batch are done.
 
 ## Installation
 
