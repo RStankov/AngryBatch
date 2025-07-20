@@ -10,13 +10,13 @@ Gem::Specification.new do |spec|
 
   spec.summary = 'Lightweight ActiveJob batch processing with completion hooks'
   spec.description = 'AngryBatch allows you to group ActiveJobs into batches and define jobs to run once all batch jobs are completed.'
-  spec.homepage = 'https://github.com/RStankov/angry-batch'
+  spec.homepage = 'https://github.com/RStankov/AngryBatch'
   spec.license = 'MIT'
   spec.required_ruby_version = '>= 3.2'
 
   spec.metadata['homepage_uri'] = spec.homepage
-  spec.metadata['source_code_uri'] = 'https://github.com/RStankov/angry-batch'
-  spec.metadata['changelog_uri'] = 'https://github.com/RStankov/angry-batch/blob/master/CHANGELOG.md'
+  spec.metadata['source_code_uri'] = 'https://github.com/RStankov/AngryBatch'
+  spec.metadata['changelog_uri'] = 'https://github.com/RStankov/AngryBatch/blob/master/CHANGELOG.md'
   spec.metadata['rubygems_mfa_required'] = 'true'
 
   # Specify which files should be added to the gem when it is released.
