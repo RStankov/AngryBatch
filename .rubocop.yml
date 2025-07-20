@@ -1,11 +1,13 @@
 plugins:
+  - rubocop-factory_bot
   - rubocop-performance
   - rubocop-rails
   - rubocop-rake
   - rubocop-rspec
+  - rubocop-rspec_rails
 
 AllCops:
-  TargetRubyVersion: 3.0
+  TargetRubyVersion: 3.2
   NewCops: enable
 
 Rails:
@@ -234,3 +236,12 @@ Rails/EnumSyntax:
 
 Rails/EnumHash:
   Enabled: true
+
+Rails/ApplicationRecord:
+  Enabled: false
+
+Rails/ApplicationJob:
+  Enabled: false
+
+Gemspec/DevelopmentDependencies:
+  Enabled: false
