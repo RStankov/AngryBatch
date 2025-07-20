@@ -12,3 +12,7 @@ gem 'rubocop-performance'
 gem 'rubocop-rails'
 gem 'rubocop-rake'
 gem 'rubocop-rspec'
+
+# Make CI happy
+gem 'activesupport', '~> 7.0'
+gem 'securerandom', '~> 0.3.1'
