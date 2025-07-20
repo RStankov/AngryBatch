@@ -1,39 +1,119 @@
 # AngryBatch
 
-TODO: Delete this and the text below, and describe your gem
+![Build Status](https://github.com/RStankov/AngryBatch/actions/workflows/main.yml/badge.svg)
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/angry_batch`. To experiment with that code, run `bin/console` for an interactive prompt.
+
+**AngryBatch** is a lightweight batching utility for [ActiveJob](https://guides.rubyonrails.org/active_job_basics.html) that lets you group multiple jobs into a batch and trigger follow-up jobs when all jobs in the batch are done.
 
 ## Installation
 
-TODO: Replace `UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG` with your gem name right after releasing it to RubyGems.org. Please do not do it earlier due to security reasons. Alternatively, replace this section with instructions to install your gem from git if you don't plan to release to RubyGems.org.
+Add this line to your application's Gemfile:
 
-Install the gem and add to the application's Gemfile by executing:
+```ruby
+gem 'angry_batch'
+```
 
-    $ bundle add UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+And then execute:
 
-If bundler is not being used to manage dependencies, install the gem by executing:
+```
+bundle
+```
 
-    $ gem install UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+Or install it yourself as:
+
+```
+gem install angry_batch
+```
+
+Then, from your Rails app directory, create the angry tables:
+
+
+```
+rails generate angry_batch:install
+rails db:migrate
+```
 
 ## Usage
 
-TODO: Write usage instructions here
+```ruby
+# Step 1: Allow the job to be batchable
+class SomeJob
+  include AngryBatch::Batchable
+end
 
-## Development
+# Step 2: Create new batch queue
+queue = AngryBatch.new(label: 'Debug label')
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+# Step 3: Add completion handler
+#   `on_complete` job will be called when all other queue jobs have completed
+#   (more than one handlers are supported)
+queue.on_complete ToBeCalledWhenAllOtherJobsAreCompletedJob, argument
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+# Step 3.1: Add error handler
+queue.on_failure HandleFailureJob, argument
+
+# Step 4: Enqueue varios jobs
+queue.enqueue SomeJob, argument1
+queue.enqueue SomeJob, argument2
+queue.enqueue SomeJob, argument3
+
+# Step 5: Trigger all jobs in the queue
+in the queue.perform_later
+```
+
+### Example
+
+**Example 1**
+
+```ruby
+# You have a building with tenants.
+# Every month, you must generate rent payments for them and notify them accordingly.
+
+def generate_rent(building, period)
+  queue = AngryBatch.new
+  queue.on_complete GenerateBudgetSnapshotJob, building
+  queue.on_complete NotifyBuildingOwnerJob, building
+
+  building.tenants.each do |tenant|
+    queue.enqueue GenerateTenantRentJob, tenant, period
+  end
+
+  queue.perform_later
+end
+```
+
+**Example 2**
+
+```ruby
+# You have an account with many projects.
+# For each project, you want to export its data individually.
+# After all exports are done, you want to archive them into a zip file.
+
+def export_account_information(account)
+  queue = AngryBatch.new(label: "Export Projects for #{account.id}")
+  queue.on_complete Export::ZipJob, account
+
+  account.projects.find_each do |project|
+    queue.enqueue Export::ProjectFilesJob, project
+  end
+
+  queue.perform_later
+end
+```
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/rstankov/angry_batch. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/rstankov/angry_batch/blob/main/CODE_OF_CONDUCT.md).
+1. Fork it
+2. Create your feature branch (`git checkout -b my-new-feature`)
+3. Commit your changes (`git commit -am 'Add some feature'`)
+4. Push to the branch (`git push origin my-new-feature`)
+5. Run the tests (`bundle exec rspec`)
+6. Create new Pull Request
+
+## Authors
+
+* **Radoslav Stankov** - *creator* - [RStankov](https://github.com/RStankov)
 
 ## License
 
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
-
-## Code of Conduct
-
-Everyone interacting in the AngryBatch project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/rstankov/angry_batch/blob/main/CODE_OF_CONDUCT.md).
+**[MIT License](./LICENSE.txt)**
