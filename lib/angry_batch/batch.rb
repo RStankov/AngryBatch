@@ -41,19 +41,21 @@ class AngryBatch::Batch < ActiveRecord::Base
   end
 
   def check_status_of_jobs
-    return unless pending?
-    return unless jobs_count == jobs.finished.count
+    with_lock do
+      return unless pending?
+      return unless jobs_count == jobs.finished.count
 
-    self.finished_at = Time.current
+      self.finished_at = Time.current
 
-    if jobs.failed.none?
-      update! state: 'completed'
+      if jobs.failed.none?
+        update! state: 'completed'
 
-      enqueue_handlers(complete_handlers)
-    else
-      update! state: 'failed'
+        enqueue_handlers(complete_handlers)
+      else
+        update! state: 'failed'
 
-      enqueue_handlers(failure_handlers)
+        enqueue_handlers(failure_handlers)
+      end
     end
   end
 

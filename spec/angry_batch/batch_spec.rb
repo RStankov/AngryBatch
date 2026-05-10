@@ -57,6 +57,18 @@ RSpec.describe AngryBatch::Batch do
       expect(AngryBatchTests::FailureJob).not_to have_been_enqueued
     end
 
+    it 'only enqueues handlers once when called concurrently' do
+      batch = create(:angry_batch, state: 'pending', complete_handlers: [['AngryBatchTests::CompleteJob']])
+      create(:angry_batch_job, batch: batch, state: 'completed')
+
+      stale_batch = AngryBatch::Batch.find(batch.id)
+
+      batch.check_status_of_jobs
+      stale_batch.check_status_of_jobs
+
+      expect(AngryBatchTests::CompleteJob).to have_been_enqueued.exactly(1).times
+    end
+
     it 'enqueues failure handlers when failed' do
       batch = create(:angry_batch, state: 'pending', failure_handlers: [['AngryBatchTests::FailureJob', [1]], ['AngryBatchTests::FailureJob', [2, 3]]], complete_handlers: [['AngryBatchTests::CompleteJob']])
 
