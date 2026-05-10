@@ -16,7 +16,7 @@ RSpec.describe AngryBatch::Builder do
 
   describe '#enqueue' do
     it 'doesnt allow non ActiveJob classes' do
-      expect { batch.enqueue String }.to raise_error(/be a subclass of ActiveJob::Base/)
+      expect { batch.enqueue String }.to raise_error(/must be a subclass of ActiveJob::Base/)
     end
 
     it 'doesnt allow non batchable job' do
@@ -34,7 +34,7 @@ RSpec.describe AngryBatch::Builder do
 
   describe '#on_complete' do
     it 'doesnt allow non ActiveJob classes' do
-      expect { batch.on_complete String }.to raise_error(/be a subclass of ActiveJob::Base/)
+      expect { batch.on_complete String }.to raise_error(/must be a subclass of ActiveJob::Base/)
     end
 
     it 'doesnt allow to be called after already performed' do
@@ -64,7 +64,7 @@ RSpec.describe AngryBatch::Builder do
 
   describe '#on_failure' do
     it 'doesnt allow non ActiveJob classes' do
-      expect { batch.on_failure String }.to raise_error(/be a subclass of ActiveJob::Base/)
+      expect { batch.on_failure String }.to raise_error(/must be a subclass of ActiveJob::Base/)
     end
 
     it 'doesnt allow to be called after already performed' do

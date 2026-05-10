@@ -19,21 +19,21 @@ class AngryBatch::Builder
 
   def on_complete(job_class, *, **)
     raise AngryBatch::BatchArgumentError, 'Batch is already running' if performed?
-    raise AngryBatch::BatchArgumentError, "#{job_class} be a subclass of ActiveJob::Base" unless job_class.is_a?(Class) && job_class < ActiveJob::Base
+    raise AngryBatch::BatchArgumentError, "#{job_class} must be a subclass of ActiveJob::Base" unless job_class.is_a?(Class) && job_class < ActiveJob::Base
 
     @batch.complete_handlers << [job_class, job_class.new(*, **).serialize['arguments']]
   end
 
   def on_failure(job_class, *, **)
     raise AngryBatch::BatchArgumentError, 'Batch is already running' if performed?
-    raise AngryBatch::BatchArgumentError, "#{job_class} be a subclass of ActiveJob::Base" unless job_class.is_a?(Class) && job_class < ActiveJob::Base
+    raise AngryBatch::BatchArgumentError, "#{job_class} must be a subclass of ActiveJob::Base" unless job_class.is_a?(Class) && job_class < ActiveJob::Base
 
     @batch.failure_handlers << [job_class, job_class.new(*, **).serialize['arguments']]
   end
 
   def enqueue(job_class, *, **)
     raise AngryBatch::BatchArgumentError, 'Batch is already running' unless @batch.new_record?
-    raise AngryBatch::BatchArgumentError, "#{job_class} be a subclass of ActiveJob::Base" unless job_class.is_a?(Class) && job_class < ActiveJob::Base
+    raise AngryBatch::BatchArgumentError, "#{job_class} must be a subclass of ActiveJob::Base" unless job_class.is_a?(Class) && job_class < ActiveJob::Base
     raise AngryBatch::BatchArgumentError, "#{job_class} must include AngryBatch::Batchable" unless job_class.included_modules.include?(AngryBatch::Batchable)
 
     @jobs << job_class.new(*, **)
