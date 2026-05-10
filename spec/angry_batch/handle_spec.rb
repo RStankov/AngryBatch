@@ -39,6 +39,26 @@ RSpec.describe AngryBatch::Handle do
       expect(record.state).to eq 'completed'
       expect(record.batch.state).to eq 'pending'
     end
+
+    it 'handles record deleted between find and lock in job_completed' do
+      job = double job_id: 'done-job'
+
+      create(:angry_batch_job, active_job_idx: job.job_id)
+
+      allow_any_instance_of(AngryBatch::Job).to receive(:with_lock).and_raise(ActiveRecord::RecordNotFound) # rubocop:disable RSpec/AnyInstance
+
+      expect { described_class.job_completed(job) }.not_to raise_error
+    end
+
+    it 'handles batch deleted after lock released in job_completed' do
+      job = double job_id: 'done-job'
+
+      create(:angry_batch_job, active_job_idx: job.job_id)
+
+      allow_any_instance_of(AngryBatch::Job).to receive(:batch).and_return(nil) # rubocop:disable RSpec/AnyInstance
+
+      expect { described_class.job_completed(job) }.not_to raise_error
+    end
   end
 
   describe '.job_failed' do
@@ -87,6 +107,26 @@ RSpec.describe AngryBatch::Handle do
 
       expect(record.reload.state).to eq 'completed'
       expect(record.batch.reload.state).to eq 'completed'
+    end
+
+    it 'handles record deleted between find and lock in job_failed' do
+      job = double job_id: 'failed-job'
+
+      create(:angry_batch_job, active_job_idx: job.job_id)
+
+      allow_any_instance_of(AngryBatch::Job).to receive(:with_lock).and_raise(ActiveRecord::RecordNotFound) # rubocop:disable RSpec/AnyInstance
+
+      expect { described_class.job_failed(job) }.not_to raise_error
+    end
+
+    it 'handles batch deleted after lock released in job_failed' do
+      job = double job_id: 'failed-job'
+
+      create(:angry_batch_job, active_job_idx: job.job_id)
+
+      allow_any_instance_of(AngryBatch::Job).to receive(:batch).and_return(nil) # rubocop:disable RSpec/AnyInstance
+
+      expect { described_class.job_failed(job) }.not_to raise_error
     end
 
     it 'doesnt mark batch as failed when there are other pending jobs' do

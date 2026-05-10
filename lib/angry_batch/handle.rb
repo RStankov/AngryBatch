@@ -12,7 +12,9 @@ module AngryBatch::Handle
       record.update!(state: 'completed')
     end
 
-    record.batch.check_status_of_jobs
+    record.batch&.check_status_of_jobs
+  rescue ActiveRecord::RecordNotFound
+    nil
   end
 
   def job_failed(job, exception = nil)
@@ -26,6 +28,8 @@ module AngryBatch::Handle
       record.update!(state: 'failed', error_message: exception&.message)
     end
 
-    record.batch.check_status_of_jobs
+    record.batch&.check_status_of_jobs
+  rescue ActiveRecord::RecordNotFound
+    nil
   end
 end
