@@ -40,4 +40,54 @@ RSpec.describe AngryBatch::Handle do
       expect(record.batch.state).to eq 'pending'
     end
   end
+
+  describe '.job_failed' do
+    it 'ignores when cant find a job with given id' do
+      job = double job_id: 'none'
+
+      expect { described_class.job_failed(job) }.not_to raise_error
+    end
+
+    it 'marks job and batch record as failed' do
+      job = double job_id: 'failed-job'
+
+      record = create(:angry_batch_job, active_job_idx: job.job_id)
+
+      described_class.job_failed(job)
+
+      record.reload
+
+      expect(record.state).to eq 'failed'
+      expect(record.batch.state).to eq 'failed'
+      expect(record.batch.finished_at).to be_present
+    end
+
+    it 'stores the error message' do
+      job = double job_id: 'failed-job'
+
+      record = create(:angry_batch_job, active_job_idx: job.job_id)
+
+      described_class.job_failed(job, RuntimeError.new('something went wrong'))
+
+      record.reload
+
+      expect(record.error_message).to eq 'something went wrong'
+    end
+
+    it 'doesnt mark batch as failed when there are other pending jobs' do
+      job = double job_id: 'failed-job'
+
+      batch = create(:angry_batch, state: :pending)
+
+      record = create(:angry_batch_job, batch: batch, active_job_idx: job.job_id)
+      create(:angry_batch_job, batch: batch)
+
+      described_class.job_failed(job)
+
+      record.reload
+
+      expect(record.state).to eq 'failed'
+      expect(record.batch.state).to eq 'pending'
+    end
+  end
 end

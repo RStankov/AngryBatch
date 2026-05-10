@@ -19,8 +19,24 @@ module AngryBatchTests
     end
   end
 
+  class AlwaysFailJob < ActiveJob::Base
+    include AngryBatch::Batchable
+
+    discard_on StandardError
+
+    def perform
+      raise StandardError, 'something went wrong'
+    end
+  end
+
   class BatchCompletedJob < ActiveJob::Base
     def perform(_arg = nil, arg2: nil)
+      # NOTE(rstankov): Do what ever
+    end
+  end
+
+  class BatchFailedJob < ActiveJob::Base
+    def perform
       # NOTE(rstankov): Do what ever
     end
   end
@@ -45,6 +61,21 @@ RSpec.describe AngryBatch do
 
       expect(record.state).to eq 'completed'
       expect(record.jobs.completed.count).to eq 2
+    end
+
+    it 'calls on failure job when a job is discarded', active_job: :inline do
+      expect_any_instance_of(AngryBatchTests::BatchFailedJob).to receive(:perform) # rubocop:disable RSpec/AnyInstance
+
+      batch = described_class.new(label: 'test')
+      batch.on_failure AngryBatchTests::BatchFailedJob
+      batch.enqueue AngryBatchTests::AlwaysFailJob
+      batch.perform_later
+
+      record = described_class::Batch.find_by! label: 'test'
+
+      expect(record.state).to eq 'failed'
+      expect(record.jobs.failed.count).to eq 1
+      expect(record.jobs.first.error_message).to eq 'something went wrong'
     end
   end
 end

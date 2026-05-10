@@ -14,4 +14,16 @@ module AngryBatch::Handle
 
     record.batch.check_status_of_jobs
   end
+
+  def job_failed(job, exception = nil)
+    record = AngryBatch::Job.find_by(active_job_idx: job.job_id)
+
+    return if record.blank?
+
+    record.with_lock do
+      record.update!(state: 'failed', error_message: exception&.message)
+    end
+
+    record.batch.check_status_of_jobs
+  end
 end
