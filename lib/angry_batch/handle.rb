@@ -21,6 +21,8 @@ module AngryBatch::Handle
     return if record.blank?
 
     record.with_lock do
+      return if record.completed?
+
       record.update!(state: 'failed', error_message: exception&.message)
     end
 

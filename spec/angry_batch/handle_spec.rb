@@ -74,6 +74,21 @@ RSpec.describe AngryBatch::Handle do
       expect(record.error_message).to eq 'something went wrong'
     end
 
+    it 'does not overwrite a completed job as failed' do
+      job = double(job_id: 'completed-job')
+
+      record = create(:angry_batch_job, active_job_idx: job.job_id)
+
+      described_class.job_completed(job)
+
+      expect(record.reload.state).to eq 'completed'
+
+      described_class.job_failed(job, RuntimeError.new('spurious callback error'))
+
+      expect(record.reload.state).to eq 'completed'
+      expect(record.batch.reload.state).to eq 'completed'
+    end
+
     it 'doesnt mark batch as failed when there are other pending jobs' do
       job = double job_id: 'failed-job'
 

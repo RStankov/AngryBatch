@@ -43,19 +43,21 @@ class AngryBatch::Builder
     raise AngryBatch::BatchArgumentError, 'Batch is empty' if empty?
     raise AngryBatch::BatchArgumentError, 'Batch is already running' if performed?
 
-    @batch.save!
+    ActiveRecord::Base.transaction(requires_new: true) do
+      @batch.save!
 
-    @jobs.each do |job|
-      @batch.jobs.create!(
-        active_job_idx: job.job_id,
-        active_job_class: job.class.name,
-        active_job_arguments: job.serialize['arguments'],
-      )
+      @jobs.each do |job|
+        @batch.jobs.create!(
+          active_job_idx: job.job_id,
+          active_job_class: job.class.name,
+          active_job_arguments: job.serialize['arguments'],
+        )
+      end
 
-      job.enqueue
+      @batch.update!(state: 'pending')
     end
 
-    @batch.update!(state: 'pending')
+    @jobs.each(&:enqueue)
     @batch.reload
     @batch.check_status_of_jobs
   end

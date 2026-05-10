@@ -8,6 +8,9 @@ module AngryBatchTests
 
   class FailureJob < ActiveJob::Base
   end
+
+  class AnotherCompleteJob < ActiveJob::Base
+  end
 end
 
 RSpec.describe AngryBatch::Batch do
@@ -55,6 +58,27 @@ RSpec.describe AngryBatch::Batch do
       expect(AngryBatchTests::CompleteJob).to have_been_enqueued.with(1)
       expect(AngryBatchTests::CompleteJob).to have_been_enqueued.with(2, 3)
       expect(AngryBatchTests::FailureJob).not_to have_been_enqueued
+    end
+
+    it 'enqueues handlers after releasing the database lock' do
+      batch = create(:angry_batch, state: 'pending', complete_handlers: [['AngryBatchTests::CompleteJob']])
+      create(:angry_batch_job, batch: batch, state: 'completed')
+
+      call_sequence = []
+
+      allow(batch).to receive(:with_lock).and_wrap_original do |original, *args, &block|
+        result = original.call(*args, &block)
+        call_sequence << :lock_released
+        result
+      end
+
+      allow(AngryBatchTests::CompleteJob).to receive(:perform_later) do
+        call_sequence << :enqueue_called
+      end
+
+      batch.check_status_of_jobs
+
+      expect(call_sequence).to eq [:lock_released, :enqueue_called]
     end
 
     it 'only enqueues handlers once when called concurrently' do
