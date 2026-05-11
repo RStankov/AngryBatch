@@ -8,9 +8,6 @@ module AngryBatchTests
 
   class FailureJob < ActiveJob::Base
   end
-
-  class AnotherCompleteJob < ActiveJob::Base
-  end
 end
 
 RSpec.describe AngryBatch::Batch do
@@ -48,7 +45,7 @@ RSpec.describe AngryBatch::Batch do
     end
 
     it 'enqueues complete handlers when complete' do
-      batch = create(:angry_batch, state: 'pending', complete_handlers: [['AngryBatchTests::CompleteJob'], ['AngryBatchTests::CompleteJob', [1]], ['AngryBatchTests::CompleteJob', [2, 3]]], failure_handlers: [['FailureJob']])
+      batch = create(:angry_batch, state: 'pending', complete_handlers: [['AngryBatchTests::CompleteJob'], ['AngryBatchTests::CompleteJob', [1]], ['AngryBatchTests::CompleteJob', [2, 3]]], failure_handlers: [['AngryBatchTests::FailureJob']])
 
       create(:angry_batch_job, batch: batch, state: 'completed')
 

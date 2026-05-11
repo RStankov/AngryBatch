@@ -9,6 +9,8 @@ module AngryBatch::Handle
     return if record.blank?
 
     record.with_lock do
+      return if record.failed?
+
       record.update!(state: 'completed')
     end
 

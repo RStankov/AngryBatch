@@ -120,6 +120,27 @@ RSpec.describe AngryBatch::Builder do
       expect(AngryBatch::Job.count).to eq 0
     end
 
+    it 'can be retried after a failed perform_later' do
+      batch.enqueue AngryBatchTests::BatchableJob
+
+      call_count = 0
+      allow_any_instance_of(AngryBatch::Job).to receive(:save!).and_wrap_original do |original, *args, **kwargs| # rubocop:disable RSpec/AnyInstance
+        call_count += 1
+        raise ActiveRecord::StatementInvalid, 'forced failure' if call_count == 1
+
+        original.call(*args, **kwargs)
+      end
+
+      expect { batch.perform_later }.to raise_error(ActiveRecord::StatementInvalid)
+
+      expect(batch.performed?).to eq false
+
+      expect { batch.perform_later }.not_to raise_error
+
+      expect(batch.performed?).to eq true
+      expect(AngryBatch::Batch.find_by(label: 'Test')).to be_present
+    end
+
     it 'creates batch and job records' do
       batch.enqueue AngryBatchTests::BatchableJob, 1, 2, 3
       batch.enqueue AngryBatchTests::BatchableJob, 4, 5, 6

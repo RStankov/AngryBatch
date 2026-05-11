@@ -59,6 +59,43 @@ RSpec.describe AngryBatch::Handle do
 
       expect { described_class.job_completed(job) }.not_to raise_error
     end
+
+    it 'does not overwrite a failed job as completed' do
+      job = double(job_id: 'failed-job')
+
+      record = create(:angry_batch_job, active_job_idx: job.job_id)
+
+      described_class.job_failed(job, RuntimeError.new('spurious callback error'))
+
+      expect(record.reload.state).to eq 'failed'
+
+      described_class.job_completed(job)
+
+      expect(record.reload.state).to eq 'failed'
+      expect(record.batch.reload.state).to eq 'failed'
+    end
+
+    it 'still checks batch status when called a second time after a prior check_status_of_jobs failure' do
+      job = double job_id: 'done-job'
+
+      record = create(:angry_batch_job, active_job_idx: job.job_id)
+
+      check_count = 0
+      allow_any_instance_of(AngryBatch::Batch).to receive(:check_status_of_jobs).and_wrap_original do |original, *args| # rubocop:disable RSpec/AnyInstance
+        check_count += 1
+        raise 'transient error' if check_count == 1
+
+        original.call(*args)
+      end
+
+      expect { described_class.job_completed(job) }.to raise_error('transient error')
+
+      expect(record.reload.state).to eq 'completed'
+
+      described_class.job_completed(job)
+
+      expect(record.batch.reload.state).to eq 'completed'
+    end
   end
 
   describe '.job_failed' do

@@ -14,7 +14,7 @@ Dir.glob(File.expand_path('support/**/*.rb', __dir__)).each { |f| require f }
 ENV['RAILS_ENV'] ||= 'test'
 
 ActiveJob::Base.queue_adapter = :test
-ActiveJob::Base.logger.level = Logger::WARN
+ActiveJob::Base.logger = Logger.new(nil)
 
 ActiveRecord::Base.establish_connection(
   adapter: 'sqlite3',

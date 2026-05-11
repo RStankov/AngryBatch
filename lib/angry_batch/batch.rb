@@ -32,11 +32,9 @@ class AngryBatch::Batch < ActiveRecord::Base
 
   class << self
     def expired
-      completed = where('state = ? AND updated_at < ?', :completed, 2.days.ago)
-      failed = where('state = ? AND updated_at < ?', :failed, 4.weeks.ago)
-      pending = where('state = ? AND updated_at < ?', :pending, 4.weeks.ago)
-
-      completed.or(failed).or(pending)
+      completed.where(updated_at: ...2.days.ago)
+        .or(failed.where(updated_at: ...4.weeks.ago))
+        .or(pending.where(updated_at: ...4.weeks.ago))
     end
   end
 
@@ -63,11 +61,7 @@ class AngryBatch::Batch < ActiveRecord::Base
 
   def enqueue_handlers(handlers)
     handlers.each do |(job_class, job_arguments)|
-      if job_arguments.nil?
-        job_class.constantize.perform_later
-      else
-        job_class.constantize.perform_later(*ActiveJob::Arguments.deserialize(job_arguments))
-      end
+      job_class.constantize.perform_later(*ActiveJob::Arguments.deserialize(job_arguments || []))
     end
   end
 end

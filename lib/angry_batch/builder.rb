@@ -9,10 +9,11 @@ class AngryBatch::Builder
       failure_handlers: [],
     )
     @jobs = []
+    @performed = false
   end
 
   def performed?
-    @batch.persisted?
+    @performed
   end
 
   delegate :empty?, to: :@jobs
@@ -32,7 +33,7 @@ class AngryBatch::Builder
   end
 
   def enqueue(job_class, *, **)
-    raise AngryBatch::BatchArgumentError, 'Batch is already running' unless @batch.new_record?
+    raise AngryBatch::BatchArgumentError, 'Batch is already running' if performed?
     raise AngryBatch::BatchArgumentError, "#{job_class} must be a subclass of ActiveJob::Base" unless job_class.is_a?(Class) && job_class < ActiveJob::Base
     raise AngryBatch::BatchArgumentError, "#{job_class} must include AngryBatch::Batchable" unless job_class.included_modules.include?(AngryBatch::Batchable)
 
@@ -57,8 +58,18 @@ class AngryBatch::Builder
       @batch.update!(state: 'pending')
     end
 
+    @performed = true
     @jobs.each(&:enqueue)
-    @batch.reload
     @batch.check_status_of_jobs
+  rescue
+    unless @performed
+      @batch = AngryBatch::Batch.new(
+        label: @batch.label,
+        state: 'scheduling',
+        complete_handlers: @batch.complete_handlers,
+        failure_handlers: @batch.failure_handlers,
+      )
+    end
+    raise
   end
 end
