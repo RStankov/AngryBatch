@@ -12,7 +12,16 @@ module AngryBatch
       end
 
       def copy_migrations
-        migration_template 'create_angry_batch_tables.rb', 'db/migrate/create_angry_batch_tables.rb'
+        existing = self.class.migration_exists?(File.join(destination_root, 'db/migrate'), 'create_angry_batch_tables')
+
+        if existing.nil?
+          migration_template 'create_angry_batch_tables.rb', 'db/migrate/create_angry_batch_tables.rb'
+          return
+        end
+
+        return if File.read(existing).include?('completed_jobs_count')
+
+        migration_template 'add_metadata_and_counters_to_angry_batch_tables.rb', 'db/migrate/add_metadata_and_counters_to_angry_batch_tables.rb', skip: true
       end
     end
   end

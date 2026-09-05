@@ -6,19 +6,15 @@ class CreateAngryBatchTables < ActiveRecord::Migration[7.0]
       begin
         t.jsonb :complete_handlers, null: false, default: []
         t.jsonb :failure_handlers, null: false, default: []
-        t.jsonb :metadata, null: false, default: {}
       rescue NoMethodError
         t.json :complete_handlers, null: false, default: []
         t.json :failure_handlers, null: false, default: []
-        t.json :metadata, null: false, default: {}
       end
 
       t.datetime :finished_at
       t.integer  :jobs_count, null: false, default: 0
-      t.integer  :completed_jobs_count, null: false, default: 0
-      t.integer  :failed_jobs_count, null: false, default: 0
       t.string   :label
-      t.string   :state, null: false, default: 'pending'
+      t.string   :state, null: false, default: 'scheduling'
 
       t.timestamps
     end

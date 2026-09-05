@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    angry_batch (1.0.1)
+    angry_batch (1.1.0)
       activejob (>= 7.1)
       activerecord (>= 7.1)
       railties (>= 7.1)

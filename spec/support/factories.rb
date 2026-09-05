@@ -13,5 +13,11 @@ FactoryBot.define do
     state { 'pending' }
 
     active_job_class { 'FakeJob' }
+
+    after(:create) do |job|
+      next if job.pending?
+
+      AngryBatch::Batch.increment_counter(:"#{job.state}_jobs_count", job.batch_id) # rubocop:disable Rails/SkipsModelValidations
+    end
   end
 end

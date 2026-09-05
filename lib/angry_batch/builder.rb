@@ -1,10 +1,11 @@
 # frozen_string_literal: true
 
 class AngryBatch::Builder
-  def initialize(label: nil)
+  def initialize(label: nil, metadata: {})
+    @metadata = ActiveJob::Arguments.serialize([metadata || {}]).first
     @batch = AngryBatch::Batch.new(
       label: label,
-      state: 'scheduling',
+      metadata: @metadata,
       complete_handlers: [],
       failure_handlers: [],
     )
@@ -20,22 +21,24 @@ class AngryBatch::Builder
 
   def on_complete(job_class, *, **)
     raise AngryBatch::BatchArgumentError, 'Batch is already running' if performed?
-    raise AngryBatch::BatchArgumentError, "#{job_class} must be a subclass of ActiveJob::Base" unless job_class.is_a?(Class) && job_class < ActiveJob::Base
+
+    AngryBatch::Helper.assert_job_class(job_class)
 
     @batch.complete_handlers << [job_class, job_class.new(*, **).serialize['arguments']]
   end
 
   def on_failure(job_class, *, **)
     raise AngryBatch::BatchArgumentError, 'Batch is already running' if performed?
-    raise AngryBatch::BatchArgumentError, "#{job_class} must be a subclass of ActiveJob::Base" unless job_class.is_a?(Class) && job_class < ActiveJob::Base
+
+    AngryBatch::Helper.assert_job_class(job_class)
 
     @batch.failure_handlers << [job_class, job_class.new(*, **).serialize['arguments']]
   end
 
   def enqueue(job_class, *, **)
     raise AngryBatch::BatchArgumentError, 'Batch is already running' if performed?
-    raise AngryBatch::BatchArgumentError, "#{job_class} must be a subclass of ActiveJob::Base" unless job_class.is_a?(Class) && job_class < ActiveJob::Base
-    raise AngryBatch::BatchArgumentError, "#{job_class} must include AngryBatch::Batchable" unless job_class.included_modules.include?(AngryBatch::Batchable)
+
+    AngryBatch::Helper.assert_batchable(job_class)
 
     @jobs << job_class.new(*, **)
   end
@@ -47,25 +50,23 @@ class AngryBatch::Builder
     ActiveRecord::Base.transaction(requires_new: true) do
       @batch.save!
 
-      @jobs.each do |job|
-        @batch.jobs.create!(
-          active_job_idx: job.job_id,
-          active_job_class: job.class.name,
-          active_job_arguments: job.serialize['arguments'],
-        )
-      end
-
-      @batch.update!(state: 'pending')
+      @jobs.each { |job| AngryBatch::Helper.add_job_to_batch(@batch, job) }
     end
 
     @performed = true
-    @jobs.each(&:enqueue)
-    @batch.check_status_of_jobs
-  rescue
+
+    AngryBatch::Helper.after_transaction do
+      @jobs.each do |job|
+        raise ActiveJob::EnqueueError, ["#{job.class.name} was not enqueued", job.enqueue_error&.message].compact.join(': ') unless job.enqueue
+      end
+    end
+
+    @batch
+  rescue StandardError
     unless @performed
       @batch = AngryBatch::Batch.new(
         label: @batch.label,
-        state: 'scheduling',
+        metadata: @metadata,
         complete_handlers: @batch.complete_handlers,
         failure_handlers: @batch.failure_handlers,
       )
