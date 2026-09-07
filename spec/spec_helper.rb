@@ -28,6 +28,9 @@ migration_files.sort.each { |file| require file }
 # Run the migrations
 CreateAngryBatchTables.new.migrate(:up)
 
+GlobalID.app = 'angry-batch'
+ActiveSupport.on_load(:active_record) { include GlobalID::Identification }
+
 RSpec.configure do |config|
   config.disable_monkey_patching!
 
@@ -53,10 +56,8 @@ RSpec.configure do |config|
     end
   end
 
-  config.around do |example|
-    ActiveRecord::Base.transaction do
-      example.run
-      raise ActiveRecord::Rollback
-    end
+  config.after do
+    AngryBatch::Job.delete_all
+    AngryBatch::Batch.delete_all
   end
 end

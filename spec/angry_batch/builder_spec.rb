@@ -9,6 +9,12 @@ module AngryBatchTests
   class BatchableJob < ActiveJob::Base
     include AngryBatch::Batchable
   end
+
+  class AbortsEnqueueBatchableJob < ActiveJob::Base
+    include AngryBatch::Batchable
+
+    before_enqueue { throw :abort }
+  end
 end
 
 RSpec.describe AngryBatch::Builder do
@@ -92,6 +98,40 @@ RSpec.describe AngryBatch::Builder do
     end
   end
 
+  describe 'metadata' do
+    it 'round-trips ActiveJob serializable values' do
+      other_batch = create(:angry_batch)
+      date = Date.new(2026, 9, 5)
+
+      batch = described_class.new(label: 'Test', metadata: { mode: :full, nested: { 'count' => 1 }, date: date, record: other_batch })
+      batch.enqueue AngryBatchTests::BatchableJob
+      batch.perform_later
+
+      record = AngryBatch::Batch.find_by! label: 'Test'
+
+      expect(record.metadata).to eq(mode: :full, nested: { 'count' => 1 }, date: date, record: other_batch)
+    end
+
+    it 'defaults to an empty hash' do
+      batch.enqueue AngryBatchTests::BatchableJob
+      batch.perform_later
+
+      expect(AngryBatch::Batch.find_by!(label: 'Test').metadata).to eq({})
+    end
+
+    it 'treats nil as an empty hash' do
+      batch = described_class.new(label: 'Test', metadata: nil)
+      batch.enqueue AngryBatchTests::BatchableJob
+      batch.perform_later
+
+      expect(AngryBatch::Batch.find_by!(label: 'Test').metadata).to eq({})
+    end
+
+    it 'raises for values ActiveJob cannot serialize' do
+      expect { described_class.new(metadata: { callback: -> {} }) }.to raise_error(ActiveJob::SerializationError)
+    end
+  end
+
   describe '#perform_later' do
     it 'doesnt allow empty batches' do
       expect(batch.empty?).to eq true
@@ -121,6 +161,7 @@ RSpec.describe AngryBatch::Builder do
     end
 
     it 'can be retried after a failed perform_later' do
+      batch = described_class.new(label: 'Test', metadata: { mode: :full })
       batch.enqueue AngryBatchTests::BatchableJob
 
       call_count = 0
@@ -138,7 +179,38 @@ RSpec.describe AngryBatch::Builder do
       expect { batch.perform_later }.not_to raise_error
 
       expect(batch.performed?).to eq true
-      expect(AngryBatch::Batch.find_by(label: 'Test')).to be_present
+      expect(AngryBatch::Batch.find_by!(label: 'Test').metadata).to eq(mode: :full)
+    end
+
+    it 'returns the batch record' do
+      batch.enqueue AngryBatchTests::BatchableJob
+
+      result = batch.perform_later
+
+      expect(result).to be_a AngryBatch::Batch
+      expect(result).to be_persisted
+      expect(result.label).to eq 'Test'
+    end
+
+    it 'raises on the first job that is not enqueued' do
+      batch.enqueue AngryBatchTests::AbortsEnqueueBatchableJob
+      batch.enqueue AngryBatchTests::BatchableJob
+
+      expect { batch.perform_later }.to raise_error(ActiveJob::EnqueueError, /AbortsEnqueueBatchableJob/)
+
+      expect(AngryBatchTests::BatchableJob).not_to have_been_enqueued
+    end
+
+    it 'does not settle a batch whose jobs all fail to enqueue' do
+      batch.on_complete AngryBatchTests::RedularJob
+      batch.enqueue AngryBatchTests::AbortsEnqueueBatchableJob
+
+      expect { batch.perform_later }.to raise_error(ActiveJob::EnqueueError)
+
+      record = AngryBatch::Batch.find_by! label: 'Test'
+
+      expect(record.state).to eq 'pending'
+      expect(AngryBatchTests::RedularJob).not_to have_been_enqueued
     end
 
     it 'creates batch and job records' do

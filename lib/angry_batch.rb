@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'angry_batch/version'
+require_relative 'angry_batch/helper'
 require_relative 'angry_batch/job'
 require_relative 'angry_batch/batch'
 require_relative 'angry_batch/handle'
@@ -16,6 +17,9 @@ module AngryBatch
   end
 
   class BatchArgumentError < ArgumentError
+  end
+
+  class BatchFinishedError < StandardError
   end
 end
 

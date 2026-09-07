@@ -24,6 +24,17 @@ RSpec.describe AngryBatch::Handle do
       expect(record.batch.finished_at).to be_present
     end
 
+    it 'increments the completed counter once' do
+      job = double job_id: 'done-job'
+
+      record = create(:angry_batch_job, active_job_idx: job.job_id)
+
+      described_class.job_completed(job)
+      described_class.job_completed(job)
+
+      expect(record.batch.reload).to have_attributes(completed_jobs_count: 1, failed_jobs_count: 0)
+    end
+
     it 'doesnt mark batch as completed when there are other jobs' do
       job = double job_id: 'done-job'
 
@@ -129,6 +140,18 @@ RSpec.describe AngryBatch::Handle do
       record.reload
 
       expect(record.error_message).to eq 'something went wrong'
+    end
+
+    it 'records only the first failure' do
+      job = double job_id: 'failed-job'
+
+      record = create(:angry_batch_job, active_job_idx: job.job_id)
+
+      described_class.job_failed(job, RuntimeError.new('first'))
+      described_class.job_failed(job, RuntimeError.new('second'))
+
+      expect(record.reload.error_message).to eq 'first'
+      expect(record.batch.reload).to have_attributes(completed_jobs_count: 0, failed_jobs_count: 1)
     end
 
     it 'does not overwrite a completed job as failed' do
